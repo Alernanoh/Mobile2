@@ -1,17 +1,22 @@
-import { Alert, Button, FlatList, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Alert, Button, FlatList, StatusBar, StyleSheet, Text, TextInput, View } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import { db } from '../config/Config';
-import { ref, set, onValue} from "firebase/database";
+import { ref, set, onValue, update, remove} from "firebase/database";
+import Tarjeta from '../components/Tarjeta';
 
 export default function UsuarioScreen() {
 const [cedula, setcedula] = useState("")
 const [nombre, setnombre] = useState("")
 const [correo, setcorreo] = useState("")
 const [descripcion, setdescripcion] = useState("")
+const [edicion, setedicion] = useState(false)
 
 const [usuarios, setusuarios] = useState([])
 //Guardar información
-function guardarUsuario(cedula: string, nombre: string, correo: string, descripcion: string) {
+ function guardarUsuario(cedula: string, nombre: string, correo: string, descripcion: string) {
+  if(edicion){
+    editar();
+  } else{
 
     set(ref(db, 'users/' + cedula), {
       username: nombre,
@@ -23,7 +28,36 @@ function guardarUsuario(cedula: string, nombre: string, correo: string, descripc
     setnombre("")
     setcorreo("")
     setdescripcion("")
+    setedicion(false)
   }
+  }
+//------------------EDITAR_---------------
+  function editar(){
+    update (ref(db, 'users/' + cedula), {
+      username: nombre,
+      email: correo,
+      description: descripcion
+    });
+    setcedula("")
+    setnombre("")
+    setcorreo("")
+    setdescripcion("")
+    setedicion(false)
+    Alert.alert("Mensaje", "Editado exitosamente")
+  }
+  //------------------EDITAR2--------------
+  function editar2(item: any){
+    setedicion(true)
+    setcedula(item.keys)
+    setnombre(item.username)
+    setcorreo(item.email)
+    setdescripcion(item.description)
+  }
+//------------------Eliminar
+  function eliminar(id: string){
+    remove (ref(db, 'users/' + id)); 
+    Alert.alert("Mensaje", "Información eliminada exitosamente")
+    }
 
   //Leer los datos
   useEffect(() => {
@@ -42,8 +76,10 @@ function guardarUsuario(cedula: string, nombre: string, correo: string, descripc
  
   type Usuario={
     username: string
+    keys: string
+    description: string
+    email: string
   }
-
   return (
     <View style={styles.container} >
       <Text style={styles.txt}>Usuarios</Text>
@@ -70,25 +106,40 @@ function guardarUsuario(cedula: string, nombre: string, correo: string, descripc
       multiline
       value={descripcion}
       />
-      <Button title='Guardar'
-      onPress={()=> guardarUsuario(cedula, nombre, correo, descripcion)}
+       <Button title={edicion ? 'Editar' : 'Guardar'} onPress={()=> guardarUsuario(cedula, nombre, correo, descripcion)}
       />
-
-      <FlatList
-      data= {usuarios}
-      renderItem={({item}: {item: Usuario})=>
+      
+      <FlatList 
+       data= {usuarios}
+       renderItem={({item}: {item: Usuario})=>
     <View>
-      <Text>{item.username}</Text>
-      </View>}
-      />
+      <Tarjeta usuario = {item}/>
+        <View style={styles.buttons}>
+      <Button title='Editar' color={'green'} onPress={()=> editar2(item)}/>
+      <Button title='Borrar' color={'red'} onPress={()=> eliminar(item.keys)}/>
+        </View>
+    </View>}
+       />
+
+      <StatusBar 
+      backgroundColor={'#F4A261'}/>
     </View>
   )
 }
 
+      /*
+      <Text>{item.username}</Text>
+      <Text>{item.keys}</Text>
+      <Text>{item.description}</Text>
+      <Text>{item.email}</Text>
+        <View style={styles.buttons}>
+      <Button title='Editar' color={'green'} onPress={()=> editar(item.keys)}/>
+      <Button title='Borrar' color={'red'} onPress={()=> eliminar(item.keys)}/>
+        </View>*/
 const styles = StyleSheet.create({
     container:{
-        flex:1,
-        backgroundColor: '#9010c7',
+        flex:2,
+        backgroundColor: '#948e48',
         alignItems: "center",
         justifyContent: "center"
     },
@@ -106,4 +157,14 @@ const styles = StyleSheet.create({
     txt:{
         fontSize: 30
     },
+    flatlist:{
+      alignSelf: 'center',
+      padding: 15,
+      flex: 1,
+      justifyContent: 'flex-end'
+    },
+    buttons:{
+      flexDirection: 'row',
+      justifyContent: 'space-between'
+    }
 })
